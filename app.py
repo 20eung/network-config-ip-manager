@@ -17,6 +17,7 @@ from parser.ip_parser import parse_all_configs
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB — Nginx 프록시 환경 파일 업로드 대응
 
 # 기본 config 디렉토리 (환경변수 CONFIG_DIR 우선, 없으면 실행 위치 기준)
 DEFAULT_CONFIG_DIR = os.environ.get('CONFIG_DIR', str(Path(__file__).parent.parent / 'config'))
