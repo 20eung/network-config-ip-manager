@@ -1,6 +1,13 @@
 # Nokia Config IP Manager
 
-Nokia SR OS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으로 생성하는 웹 대시보드입니다.
+> Nokia SR OS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으로 생성하는 웹 대시보드
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![openpyxl](https://img.shields.io/badge/Export-Excel%20%7C%20CSV-217346?logo=microsoftexcel&logoColor=white)]()
+[![License](https://img.shields.io/badge/License-Internal%20Use-lightgrey)]()
 
 ---
 
@@ -14,6 +21,12 @@ Nokia SR OS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으
 - **Static Route** (목적지 CIDR + Next-hop)
 
 Peer 장비는 Next-hop IP 역방향 매핑과 인터페이스 Description 패턴 분석을 통해 자동 식별됩니다.
+
+---
+
+## Screenshot
+
+![Dashboard](docs/images/dashboard.png)
 
 ---
 
@@ -81,8 +94,8 @@ config 파일에서 추출하는 필드 목록입니다.
 ### Docker (권장)
 
 ```bash
-git clone https://github.com/your-username/Nokia-Config-IP-Manager.git
-cd Nokia-Config-IP-Manager
+git clone https://github.com/20eung/nokia-ip-manager.git
+cd nokia-ip-manager
 
 docker-compose up -d
 ```
@@ -95,8 +108,8 @@ docker-compose up -d
 ### 로컬 실행
 
 ```bash
-git clone https://github.com/your-username/Nokia-Config-IP-Manager.git
-cd Nokia-Config-IP-Manager
+git clone https://github.com/20eung/nokia-ip-manager.git
+cd nokia-ip-manager
 
 pip install -r requirements.txt
 python app.py
@@ -131,12 +144,14 @@ Nokia SR OS TiMOS 계열 장비의 config 파일을 지원합니다.
 ## Project Structure
 
 ```
-Nokia-Config-IP-Manager/
+nokia-ip-manager/
 ├── app.py                  # Flask 애플리케이션 (API 라우트)
 ├── parser/
 │   └── ip_parser.py        # Nokia SR OS config 파서
 ├── templates/
 │   └── index.html          # 단일 페이지 대시보드 (Bootstrap 5)
+├── docs/
+│   └── images/             # README 스크린샷
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
