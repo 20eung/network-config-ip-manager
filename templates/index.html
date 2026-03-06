@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IP Management Dashboard — Nokia Config</title>
+  <title>IP Management Dashboard — Nokia &amp; Arista Config</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
@@ -163,6 +163,21 @@
       background: #fff !important;
       border-radius: 7px !important;
     }
+
+    /* ── 컬럼 리사이즈 핸들 ── */
+    .col-resize-handle {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 5px;
+      cursor: col-resize;
+      z-index: 12;
+      user-select: none;
+      transition: background .1s;
+    }
+    .col-resize-handle:hover,
+    .col-resize-handle.resizing {
+      background: rgba(255,255,255,.3);
+    }
   </style>
 </head>
 <body>
@@ -172,7 +187,7 @@
   <i class="bi bi-router fs-4 text-primary"></i>
   <div>
     <div class="title">IP Management Dashboard</div>
-    <div class="subtitle">Nokia SR OS Config — IP 관리대장 자동 생성</div>
+    <div class="subtitle">Nokia SR OS &amp; Arista EOS Config — IP 관리대장 자동 생성</div>
   </div>
   <div class="ms-auto d-flex align-items-center gap-2">
     <span id="record-count" class="badge bg-secondary fs-6">0 records</span>
@@ -356,15 +371,16 @@ const LS_KEY = 'ip-mgr-col-state-v2';
 ════════════════════════════════════════════════════ */
 let colOrder   = COLUMNS_DEF.map(c => c.key);
 let colVisible = Object.fromEntries(COLUMNS_DEF.map(c => [c.key, c.defaultVisible]));
+let colWidths  = {}; // {key: px_number} — 사용자가 마우스로 조절한 컬럼 너비
 
 function saveColState() {
-  localStorage.setItem(LS_KEY, JSON.stringify({ colOrder, colVisible }));
+  localStorage.setItem(LS_KEY, JSON.stringify({ colOrder, colVisible, colWidths }));
 }
 function loadColState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return;
-    const { colOrder: o, colVisible: v } = JSON.parse(raw);
+    const { colOrder: o, colVisible: v, colWidths: w } = JSON.parse(raw);
     // 새 컬럼이 추가됐을 경우를 대비해 병합
     const knownKeys = new Set(COLUMNS_DEF.map(c => c.key));
     colOrder = [
@@ -372,11 +388,13 @@ function loadColState() {
       ...COLUMNS_DEF.map(c => c.key).filter(k => !o.includes(k)) // 새 컬럼은 뒤에
     ];
     colVisible = { ...Object.fromEntries(COLUMNS_DEF.map(c => [c.key, c.defaultVisible])), ...v };
+    colWidths  = w || {};
   } catch {}
 }
 function resetColState() {
   colOrder   = COLUMNS_DEF.map(c => c.key);
   colVisible = Object.fromEntries(COLUMNS_DEF.map(c => [c.key, c.defaultVisible]));
+  colWidths  = {};
   saveColState();
 }
 
@@ -535,6 +553,7 @@ function getCellHtml(r, key) {
 function renderHeader() {
   const visibleCols = colOrder.filter(k => colVisible[k]);
   const colCount    = visibleCols.length + 1; // +1: 설정 버튼 컬럼
+  const hasWidths   = Object.keys(colWidths).length > 0;
 
   let html = '<tr>';
   // 고정 설정 버튼 컬럼
@@ -547,19 +566,25 @@ function renderHeader() {
   visibleCols.forEach(key => {
     const def = COLUMNS_DEF.find(c => c.key === key);
     if (!def) return;
-    const sortClass = def.sortable ? 'sortable' : '';
+    const sortClass  = def.sortable ? 'sortable' : '';
     const sortActive = sortCol === key ? sortDir : '';
-    html += `<th class="${sortClass} ${sortActive}" data-col="${key}">
+    const wStyle     = colWidths[key] ? `width:${colWidths[key]}px;` : '';
+    html += `<th class="${sortClass} ${sortActive}" data-col="${key}" style="${wStyle}">
       ${def.label}${def.sortable ? '<span class="sort-icon"></span>' : ''}
+      <div class="col-resize-handle" data-col="${key}"></div>
     </th>`;
   });
 
   html += '</tr>';
   document.getElementById('table-head').innerHTML = html;
 
+  // table-layout 설정 (너비 저장 시 fixed, 기본 상태는 auto)
+  document.querySelector('.ip-table').style.tableLayout = hasWidths ? 'fixed' : '';
+
   // 정렬 이벤트 재바인딩
   document.querySelectorAll('#table-head th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
+    th.addEventListener('click', (e) => {
+      if (e.target.closest('.col-resize-handle')) return; // 리사이즈 핸들 클릭은 정렬 무시
       const col = th.dataset.col;
       sortDir = sortCol === col ? (sortDir === 'asc' ? 'desc' : 'asc') : 'asc';
       sortCol = col;
@@ -780,11 +805,68 @@ function uniqueCount(arr, key) {
 }
 
 /* ════════════════════════════════════════════════════
+   컬럼 리사이즈
+════════════════════════════════════════════════════ */
+function initColResize() {
+  const thead = document.getElementById('table-head');
+
+  thead.addEventListener('mousedown', e => {
+    const handle = e.target.closest('.col-resize-handle');
+    if (!handle) return;
+
+    const th  = handle.closest('th');
+    const key = handle.dataset.col;
+    if (!th || !key) return;
+
+    // 아직 fixed layout이 아니면 현재 렌더된 너비를 캡처하여 고정
+    const table = document.querySelector('.ip-table');
+    if (table.style.tableLayout !== 'fixed') {
+      thead.querySelectorAll('th[data-col]').forEach(t => {
+        const k = t.dataset.col;
+        if (k) colWidths[k] = t.offsetWidth;
+      });
+      table.style.tableLayout = 'fixed';
+      thead.querySelectorAll('th[data-col]').forEach(t => {
+        const k = t.dataset.col;
+        if (k && colWidths[k]) t.style.width = colWidths[k] + 'px';
+      });
+    }
+
+    handle.classList.add('resizing');
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const startX     = e.clientX;
+    const startWidth = th.offsetWidth;
+
+    function onMove(ev) {
+      const newWidth = Math.max(50, startWidth + ev.clientX - startX);
+      th.style.width = newWidth + 'px';
+      colWidths[key] = newWidth;
+    }
+
+    function onUp() {
+      handle.classList.remove('resizing');
+      document.body.style.cursor     = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      saveColState();
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    e.preventDefault();
+  });
+}
+
+/* ════════════════════════════════════════════════════
    초기화
 ════════════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
   loadColState();
   renderHeader();   // 빈 상태에서도 헤더 먼저 렌더
+  initColResize();  // 컬럼 리사이즈 초기화
 
   // 모달이 완전히 나타난 후 SortableJS 초기화
   // (display:none 상태에서는 SortableJS가 정상 동작하지 않음)
