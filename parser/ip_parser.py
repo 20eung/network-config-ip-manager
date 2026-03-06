@@ -695,16 +695,48 @@ def parse_config_file(filepath: str) -> list[IpRecord]:
             admin_state=iface.get('admin_state', 'Active'),
         ))
 
+    # ── 로컬 인터페이스 서브넷 맵 구성 ──
+    # next-hop IP가 어느 로컬 인터페이스 서브넷에 속하는지 조회하여 출구 인터페이스 추론
+    local_subnet_map: list[tuple] = []  # (IPv4Network, interface_name, port, iface_desc, port_desc)
+    for _iface in base_ifaces + ies_ifaces:
+        if not _iface.get('ip'):
+            continue
+        try:
+            net = IPv4Network(_iface['ip'], strict=False)
+            local_subnet_map.append((
+                net,
+                _iface['interface_name'],
+                _iface.get('port', ''),
+                _iface.get('interface_desc', ''),
+                _iface.get('port_desc', ''),
+            ))
+        except (AddressValueError, ValueError):
+            pass
+
+    def find_egress_iface(nh_ip: str):
+        """next-hop IP로 출구 인터페이스 정보 반환 (interface_name, port, iface_desc, port_desc)"""
+        if not nh_ip:
+            return '', '', '', ''
+        try:
+            addr = IPv4Address(nh_ip)
+            for net, iface_name, port, iface_desc, port_desc in local_subnet_map:
+                if addr in net and str(addr) != str(net.network_address):
+                    return iface_name, port, iface_desc, port_desc
+        except (AddressValueError, ValueError):
+            pass
+        return '', '', '', ''
+
     # 3. Static Route
     for route in static_routes:
         b = make_base('Static Route', route['prefix'])
         peer_device, peer_port = extract_peer_from_desc(route.get('description', ''))
+        egress_name, egress_port, egress_idesc, egress_pdesc = find_egress_iface(route['next_hop'])
         records.append(IpRecord(
             **b,
-            interface_name='',
-            port='',
-            interface_desc='',
-            port_desc='',
+            interface_name=egress_name,
+            port=egress_port,
+            interface_desc=egress_idesc,
+            port_desc=egress_pdesc,
             peer_device=peer_device,
             peer_port=peer_port,
             next_hop_ip=route['next_hop'],
