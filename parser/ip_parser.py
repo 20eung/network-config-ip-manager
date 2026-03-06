@@ -803,18 +803,31 @@ def parse_config_file(filepath: str) -> list[IpRecord]:
 def parse_all_configs(config_dir: str) -> list[dict]:
     """
     지정 디렉토리의 모든 .txt config 파일을 파싱.
-    1단계: 각 파일 파싱
+    Nokia(TiMOS)와 Arista(EOS) 파일을 자동 감지하여 각 파서로 분기.
+    1단계: 각 파일 파싱 (벤더 자동 감지)
     2단계: 동일 장비(hostname 기준) 중복 파일 → 최신 날짜 파일만 유지
     3단계: next-hop 역방향 맵 구축
     4단계: Static Route의 peer_device 자동 채우기
     """
+    from parser.arista_parser import (
+        detect_vendor,
+        parse_config_file as arista_parse_config_file,
+    )
     config_path = Path(config_dir)
 
     # 파일별 파싱
     file_records: dict[str, list[IpRecord]] = {}
     txt_files = sorted(config_path.glob('*.txt'))
     for f in txt_files:
-        records = parse_config_file(str(f))
+        try:
+            raw = f.read_text(encoding='utf-8-sig', errors='replace')
+        except Exception:
+            continue
+        vendor = detect_vendor(raw)
+        if vendor == 'arista':
+            records = arista_parse_config_file(str(f))
+        else:
+            records = parse_config_file(str(f))
         if records:
             file_records[str(f)] = records
 
