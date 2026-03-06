@@ -60,7 +60,7 @@ class IpRecord:
 # 정규식 상수 (parserV3.ts 참고)
 # ─────────────────────────────────────────────
 
-RE_OS_VERSION     = re.compile(r'# TiMOS-(\S+)\s+\S+\s+(?:ALCATEL|Nokia)\s+(.+?)\s+Copyright', re.IGNORECASE)
+RE_OS_VERSION     = re.compile(r'# TiMOS-(\S+)\s+\S+\s+(?:ALCATEL-LUCENT|ALCATEL|Nokia)\s+(.+?)(?:\s+Copyright|\s*$)', re.IGNORECASE)
 RE_GEN_DATE       = re.compile(r'# Generated\s+\w+\s+(\w+)\s+(\d+)\s+[\d:]+\s+(\d{4})\s+UTC', re.IGNORECASE)
 RE_HOSTNAME       = re.compile(r'^\s{4,8}name\s+"([^"]+)"')
 RE_LOCATION       = re.compile(r'^\s+location\s+"([^"]+)"')
@@ -68,6 +68,8 @@ RE_SYSTEM_IP      = re.compile(r'interface\s+"system"[\s\S]*?address\s+([\d.]+/\
 RE_ROUTER_ID      = re.compile(r'^\s+router-id\s+([\d.]+)')
 RE_AS_NUMBER      = re.compile(r'^\s+autonomous-system\s+(\d+)')
 RE_STATIC_ENTRY   = re.compile(r'static-route-entry\s+([\d.]+/\d+)')
+RE_STATIC_INLINE  = re.compile(r'^static-route\s+([\d.]+/\d+)\s+next-hop\s+([\d.]+)')
+RE_INLINE_DESC    = re.compile(r'\bdescription\s+"([^"]+)"')
 RE_NEXT_HOP       = re.compile(r'next-hop\s+([\d.]+)')
 RE_PORT_PHYSICAL  = re.compile(r'^port\s+(\d+/\d+/\d+(?:\.\d+)?)')
 RE_PORT_LAG       = re.compile(r'^lag\s+(\d+)')
@@ -559,7 +561,23 @@ def parse_static_routes(config_text: str) -> list[dict]:
             current_nh = None
             continue
 
-        # static-route-entry
+        # inline static-route (구버전): static-route X/Y next-hop A.B.C.D [description "..."]
+        m = RE_STATIC_INLINE.match(trimmed)
+        if m:
+            if current_nh:
+                routes.append(current_nh)
+                current_nh = None
+            m_desc = RE_INLINE_DESC.search(trimmed)
+            routes.append({
+                'prefix': m.group(1),
+                'next_hop': m.group(2),
+                'description': m_desc.group(1) if m_desc else '',
+                'admin_state': 'Active',
+            })
+            current_prefix = None
+            continue
+
+        # static-route-entry (신버전 블록 형식)
         m = RE_STATIC_ENTRY.match(trimmed)
         if m:
             if current_nh:
