@@ -1,13 +1,23 @@
 services:
   ip-manager:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: nokia-ip-manager
+    hostname: nokia-ip-manager
+    restart: unless-stopped
     ports:
       - "5001:5001"
-    volumes:
-      # 호스트의 config 디렉토리를 컨테이너 /config 에 마운트 (읽기 전용)
-      - ../config:/config:ro
     command: python app.py
     environment:
       - CONFIG_DIR=/config
-    restart: unless-stopped
+      - TZ=Asia/Seoul
+    volumes:
+      # 호스트의 config 디렉토리를 컨테이너 /config 에 마운트 (읽기 전용)
+      - ./config:/config:ro
+    networks:
+      - npm-network
+
+networks:
+  npm-network:
+    driver: bridge
