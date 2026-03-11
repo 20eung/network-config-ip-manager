@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nokia-ip-manager
-    hostname: nokia-ip-manager
+    container_name: ip-manager
+    hostname: ip-manager
     restart: unless-stopped
     ports:
       - "5001:5001"
@@ -14,10 +14,13 @@ services:
       - TZ=Asia/Seoul
     volumes:
       # 호스트의 config 디렉토리를 컨테이너 /config 에 마운트 (읽기 전용)
-      - ./config:/config:ro
+      - /data/configs:/config:ro
     networks:
       - npm-network
+      - portainer-network
 
 networks:
   npm-network:
     driver: bridge
+  portainer-network:
+    external: true

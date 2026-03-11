@@ -113,7 +113,8 @@ def index():
 
 @app.route('/api/load', methods=['POST'])
 def api_load():
-    """config 디렉토리 지정 후 파싱"""
+    """config 디렉토리 지정 후 파싱 (항상 캐시 무효화 후 재파싱)"""
+    global _cache
     data = request.get_json(silent=True) or {}
     config_dir = data.get('config_dir', '').strip()
 
@@ -124,6 +125,9 @@ def api_load():
     config_dir = str(Path(config_dir).resolve())
     if not Path(config_dir).is_dir():
         return jsonify({'error': f'디렉토리를 찾을 수 없습니다: {config_dir}'}), 400
+
+    # 항상 재파싱 (파일 변경 반영)
+    _cache['dir'] = None
 
     try:
         records = get_records(config_dir)

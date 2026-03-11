@@ -817,7 +817,7 @@ def parse_all_configs(config_dir: str) -> list[dict]:
 
     # 파일별 파싱
     file_records: dict[str, list[IpRecord]] = {}
-    txt_files = sorted(config_path.glob('*.txt'))
+    txt_files = sorted(config_path.rglob('*.txt'))
     for f in txt_files:
         try:
             raw = f.read_text(encoding='utf-8-sig', errors='replace')

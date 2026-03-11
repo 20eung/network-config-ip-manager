@@ -401,6 +401,7 @@ function resetColState() {
 /* ════════════════════════════════════════════════════
    State
 ════════════════════════════════════════════════════ */
+const DEFAULT_DIR   = '{{ default_dir }}';
 let allRecords      = [];
 let filteredRecords = [];
 let currentType     = 'all';
@@ -409,6 +410,46 @@ let sortCol         = 'device_name';
 let sortDir         = 'asc';
 let currentDir      = '__upload__';
 let selectedFiles   = [];   // 선택된 로컬 .txt 파일 목록
+let serverMode      = false; // true: 서버 디렉토리에서 로드된 상태
+
+/* ════════════════════════════════════════════════════
+   서버 디렉토리에서 자동 로드
+════════════════════════════════════════════════════ */
+async function loadFromServer(dir) {
+  document.getElementById('loading').style.display = 'inline-block';
+  document.getElementById('btn-load').disabled = true;
+  document.getElementById('dir-status').textContent = '';
+  try {
+    const res  = await fetch('/api/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config_dir: dir }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.records || data.records.length === 0) {
+      return false;
+    }
+    allRecords = data.records;
+    currentDir = data.config_dir;
+    serverMode = true;
+    const dispEl = document.getElementById('dir-display');
+    dispEl.innerHTML = `<i class="bi bi-server text-info me-1"></i><span class="text-info fw-semibold">${esc(dir)}</span>`;
+    updateStats(data.summary);
+    setDirStatus(
+      `✓ ${allRecords.length}개 레코드 로드 완료 (${uniqueCount(allRecords, 'device_name')}개 장비)`,
+      '#198754'
+    );
+    document.getElementById('btn-excel').disabled = false;
+    document.getElementById('btn-csv').disabled   = false;
+    document.getElementById('btn-load').disabled  = false;
+    applyFilter();
+    return true;
+  } catch (e) {
+    return false;
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+}
 
 /* ════════════════════════════════════════════════════
    파일 업로드 및 파싱
@@ -429,6 +470,7 @@ async function uploadAndLoad(files) {
     }
     allRecords = data.records || [];
     currentDir = '__upload__';
+    serverMode = false;
     updateStats(data.summary);
     setDirStatus(
       `✓ ${allRecords.length}개 레코드 로드 완료 (${uniqueCount(allRecords,'device_name')}개 장비, ${data.file_count}개 파일)`,
@@ -762,7 +804,11 @@ document.getElementById('dir-file-input').addEventListener('change', async (e) =
    다시 불러오기 버튼
 ════════════════════════════════════════════════════ */
 document.getElementById('btn-load').addEventListener('click', async () => {
-  if (selectedFiles.length > 0) await uploadAndLoad(selectedFiles);
+  if (serverMode) {
+    await loadFromServer(currentDir);
+  } else if (selectedFiles.length > 0) {
+    await uploadAndLoad(selectedFiles);
+  }
 });
 
 /* ════════════════════════════════════════════════════
@@ -863,10 +909,13 @@ function initColResize() {
 /* ════════════════════════════════════════════════════
    초기화
 ════════════════════════════════════════════════════ */
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   loadColState();
   renderHeader();   // 빈 상태에서도 헤더 먼저 렌더
   initColResize();  // 컬럼 리사이즈 초기화
+
+  // 서버 Config 디렉토리에 파일이 있으면 자동 로드
+  await loadFromServer(DEFAULT_DIR);
 
   // 모달이 완전히 나타난 후 SortableJS 초기화
   // (display:none 상태에서는 SortableJS가 정상 동작하지 않음)
