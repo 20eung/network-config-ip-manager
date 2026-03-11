@@ -2,7 +2,7 @@
 
 > Nokia SR OS 및 Arista EOS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으로 생성하는 웹 대시보드
 
-[![Version](https://img.shields.io/badge/Version-v1.4.0-blue)](https://github.com/20eung/network-config-ip-manager/releases/tag/v1.4.0)
+[![Version](https://img.shields.io/badge/Version-v1.5.0-blue)](https://github.com/20eung/network-config-ip-manager/releases/tag/v1.5.0)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
