@@ -10,17 +10,10 @@ services:
       - "5001:5001"
     command: python app.py
     environment:
-      - CONFIG_DIR=/config
       - TZ=Asia/Seoul
-    volumes:
-      # 호스트의 config 디렉토리를 컨테이너 /config 에 마운트 (읽기 전용)
-      - /data/configs:/config:ro
     networks:
       - npm-network
-      - portainer-network
 
 networks:
   npm-network:
     driver: bridge
-  portainer-network:
-    external: true
