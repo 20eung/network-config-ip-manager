@@ -2,7 +2,7 @@
 
 > Nokia SR OS 및 Arista EOS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으로 생성하는 웹 대시보드
 
-[![Version](https://img.shields.io/badge/Version-v1.5.0--server-blue)](https://github.com/20eung/network-config-ip-manager/tree/server)
+[![Version](https://img.shields.io/badge/Version-v1.5.1--server-blue)](https://github.com/20eung/network-config-ip-manager/releases/tag/v1.5.1-server)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
@@ -38,7 +38,7 @@
                                                               │
                                               /data/configs ──┤ (bind mount :ro)
                                                               │
-                                                        /config 디렉토리 자동 파싱
+                                                        /data/configs 디렉토리 자동 파싱
 ```
 
 **네트워크 구성:**
@@ -54,7 +54,7 @@ portainer-network (Docker bridge)
 
 ## Features
 
-- 🔄 **서버 자동 로드** — 컨테이너 시작 시 `/config` 디렉토리를 자동으로 파싱하여 즉시 표시
+- 🔄 **서버 자동 로드** — 컨테이너 시작 시 `/data/configs` 디렉토리를 자동으로 파싱하여 즉시 표시
 - 📁 **로컬 폴더 업로드** — 서버에 없는 파일은 브라우저에서 직접 업로드 가능
 - 🔒 **Authentik 인증** — NetDevOps Portal을 통해 SSO 인증된 사용자만 접근
 - 🔍 **실시간 검색 & 필터** — IP 유형별 탭 + 키워드 검색
@@ -102,19 +102,21 @@ services:
     command: python app.py
     environment:
       - TZ=Asia/Seoul
-      - CONFIG_DIR=/config
+      - CONFIG_DIR=/data/configs
     volumes:
-      - /data/configs:/config:ro
+      - /data/configs:/data/configs:ro
     networks:
       - portainer-network
-      - npm-network
 
 networks:
   portainer-network:
     external: true
-  npm-network:
-    driver: bridge
 ```
+
+**중요**: `CONFIG_DIR` 환경변수와 볼륨 마운트 경로가 일치해야 합니다.
+- 호스트 경로: `/data/configs` (실제 config 파일 위치)
+- 컨테이너 경로: `/data/configs` (Flask 앱이 읽는 경로)
+- `:ro` 플래그: 읽기 전용 마운트 (안전성)
 
 ### 3. 빌드 및 실행
 
@@ -135,7 +137,7 @@ NetDevOps Portal에서 **IP Manager** 카드를 클릭하거나 직접 접근합
 
 ### 서버 자동 로드
 
-컨테이너 시작 후 페이지에 접속하면 `/config` 디렉토리의 파일을 자동으로 파싱하여 표시합니다.
+컨테이너 시작 후 페이지에 접속하면 `/data/configs` 디렉토리의 파일을 자동으로 파싱하여 표시합니다.
 
 - **다시 불러오기** 버튼: 서버 디렉토리를 재파싱 (config 파일 변경 후 즉시 반영)
 - 서버 모드 표시: 상단에 `서버 디렉토리` 아이콘과 경로가 표시됨
@@ -242,8 +244,10 @@ network-config-ip-manager/
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
 | `SECRET_KEY` | 랜덤 생성 | Flask 세션 시크릿 키 |
-| `CONFIG_DIR` | `/config` | 서버 사이드 config 기본 경로 (컨테이너 내부 경로) |
+| `CONFIG_DIR` | `/data/configs` | 서버 사이드 config 기본 경로 (컨테이너 내부 경로) |
 | `TZ` | `Asia/Seoul` | 타임존 |
+
+**주의**: `CONFIG_DIR`은 컨테이너 내부 경로이며, `docker-compose.yml`의 볼륨 마운트 경로와 일치해야 합니다.
 
 ---
 
