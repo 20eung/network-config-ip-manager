@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.6.0-server] - 2026-03-25
+
+### Added
+- **구분(망구분) 필드 추가**: `/data/configs` 하위 서브폴더명을 대문자로 표시 (CLOUD, ISP, MPLS)
+  - 테이블 컬럼, Excel/CSV 내보내기, 컬럼 설정 모달에 반영
+  - CLOUD(파랑), ISP(보라), MPLS(노랑) 색상 배지 표시
+- **망구분 필터**: 유형(System IP / Interface IP / Static Route)과 독립적으로 선택 가능한 망구분 필터 추가
+- **카드 망구분 카운터**: 총장비수·총IP수·System IP·Interface IP·Static Route 카드에 망구분별 세부 카운터 표시
+- **Gitea 커밋 날짜 표시**: `git logs/HEAD` 파일 직접 파싱으로 최신 커밋 시각을 디렉토리 바에 표시 (git 바이너리 불필요)
+  - `docker-compose.yml`에 `/data/gitea-server/git-repo/.git` 읽기 전용 마운트 추가
+
+### Changed
+- **IP 정렬 개선**: 네트워크·CIDR 컬럼 클릭 시 텍스트 순이 아닌 IP 주소 숫자 기준으로 정렬
+- **필터 레이아웃 개선**: 망구분/유형 필터를 한 줄에 표시, 아이콘 + 라벨 칩 디자인 적용
+- **Config 시간 표시**: 최근 Config 카드에 날짜와 시간(HH:MM:SS) 분리 표시, UTC → KST 자동 변환
+- **텍스트 변경**: '최신 Config' → '최근 Config', 'Gitea' → 'Gitea 커밋'
+
+---
+
 ## [v1.5.1-server] - 2026-03-12
 
 ### Fixed

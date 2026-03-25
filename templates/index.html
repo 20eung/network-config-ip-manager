@@ -67,6 +67,14 @@
     .badge-static  { background: #ffe5d0; color: #6a2d00; }
     .badge-active  { background: #d1e7dd; color: #0a3622; }
     .badge-shutdown{ background: #f8d7da; color: #58151c; }
+    .badge-cloud   { background: #cff4fc; color: #055160; }
+    .badge-isp     { background: #e2d9f3; color: #3d1c78; }
+    .badge-mpls    { background: #fff3cd; color: #664d03; }
+    .badge-cat     { background: #e9ecef; color: #495057; }
+
+    /* ── 카드 망구분 breakdown ── */
+    .stat-cat-breakdown { font-size: .72rem; line-height: 1.75; color: #6c757d; text-align: right; padding-left: .4rem; white-space: nowrap; }
+    .stat-cat-breakdown b { color: #343a40; font-weight: 600; }
 
     /* ── Table ── */
     .ip-table { font-size: 0.82rem; }
@@ -164,6 +172,23 @@
       border-radius: 7px !important;
     }
 
+    /* ── 필터 그룹 레이블 ── */
+    .filter-group {
+      display: inline-flex; align-items: center; gap: .45rem;
+    }
+    .filter-group-label {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: .72rem; font-weight: 700; letter-spacing: .3px;
+      color: #495057;
+      padding: .2rem .55rem;
+      background: #e9ecef; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .filter-group-label i { color: var(--color-primary); font-size: .8rem; }
+    .filter-group-divider {
+      width: 1px; height: 22px; background: #dee2e6; flex-shrink: 0;
+    }
+
     /* ── 컬럼 리사이즈 핸들 ── */
     .col-resize-handle {
       position: absolute;
@@ -212,6 +237,12 @@
   </button>
   <div id="loading" class="spinner-border spinner-border-sm text-primary ms-2"></div>
   <span id="dir-status" class="text-muted small ms-1"></span>
+  <span id="gitea-info" class="d-none d-flex align-items-center gap-1 ms-2 px-2 py-1 rounded"
+        style="background:#f8f9fa;border:1px solid #dee2e6;font-size:.78rem;white-space:nowrap">
+    <i class="bi bi-git text-warning"></i>
+    <span class="text-muted">Gitea 커밋</span>
+    <span id="gitea-updated" class="fw-semibold" style="font-family:'Consolas','Menlo',monospace;color:#343a40">—</span>
+  </span>
 </div>
 
 <!-- ── Main ── -->
@@ -221,50 +252,92 @@
   <div class="row g-3 mb-3">
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card gray">
-        <div class="value" id="stat-devices">—</div>
-        <div class="label"><i class="bi bi-hdd-network me-1"></i>총 장비 수</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="value" id="stat-devices">—</div>
+            <div class="label"><i class="bi bi-hdd-network me-1"></i>총 장비 수</div>
+          </div>
+          <div id="stat-devices-cat" class="stat-cat-breakdown"></div>
+        </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card blue">
-        <div class="value" id="stat-total">—</div>
-        <div class="label"><i class="bi bi-diagram-3 me-1"></i>총 IP 수</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="value" id="stat-total">—</div>
+            <div class="label"><i class="bi bi-diagram-3 me-1"></i>총 IP 수</div>
+          </div>
+          <div id="stat-total-cat" class="stat-cat-breakdown"></div>
+        </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card green">
-        <div class="value" id="stat-system">—</div>
-        <div class="label"><i class="bi bi-circle-fill me-1" style="color:var(--color-system)"></i>System IP</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="value" id="stat-system">—</div>
+            <div class="label"><i class="bi bi-circle-fill me-1" style="color:var(--color-system)"></i>System IP</div>
+          </div>
+          <div id="stat-system-cat" class="stat-cat-breakdown"></div>
+        </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card blue">
-        <div class="value" id="stat-iface">—</div>
-        <div class="label"><i class="bi bi-ethernet me-1"></i>Interface IP</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="value" id="stat-iface">—</div>
+            <div class="label"><i class="bi bi-ethernet me-1"></i>Interface IP</div>
+          </div>
+          <div id="stat-iface-cat" class="stat-cat-breakdown"></div>
+        </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card orange">
-        <div class="value" id="stat-static">—</div>
-        <div class="label"><i class="bi bi-signpost-2 me-1"></i>Static Route</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="value" id="stat-static">—</div>
+            <div class="label"><i class="bi bi-signpost-2 me-1"></i>Static Route</div>
+          </div>
+          <div id="stat-static-cat" class="stat-cat-breakdown"></div>
+        </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-2">
       <div class="stat-card gray">
-        <div class="value" id="stat-date" style="font-size:1rem;padding-top:6px">—</div>
-        <div class="label"><i class="bi bi-calendar3 me-1"></i>최신 Config</div>
+        <div class="value" id="stat-date" style="font-size:.92rem;padding-top:2px;line-height:1.25">—</div>
+        <div id="stat-date-time" style="font-size:.78rem;color:#adb5bd;font-family:'Consolas','Menlo',monospace;line-height:1.4"></div>
+        <div class="label mt-1"><i class="bi bi-calendar3 me-1"></i>최근 Config</div>
       </div>
     </div>
   </div>
 
   <!-- Toolbar -->
   <div class="toolbar d-flex flex-wrap align-items-center gap-2 mb-2">
-    <ul class="nav tab-pill mb-0" id="type-tabs">
-      <li class="nav-item"><a class="nav-link active" href="#" data-type="all">전체</a></li>
-      <li class="nav-item"><a class="nav-link" href="#" data-type="System IP">System IP</a></li>
-      <li class="nav-item"><a class="nav-link" href="#" data-type="Interface IP">Interface IP</a></li>
-      <li class="nav-item"><a class="nav-link" href="#" data-type="Static Route">Static Route</a></li>
-    </ul>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="filter-group">
+        <span class="filter-group-label">
+          <i class="bi bi-router"></i> 망구분
+        </span>
+        <ul class="nav tab-pill mb-0" id="category-tabs">
+          <li class="nav-item"><a class="nav-link active" href="#" data-cat="all">전체</a></li>
+        </ul>
+      </div>
+      <div class="filter-group-divider"></div>
+      <div class="filter-group">
+        <span class="filter-group-label" style="color:#495057">
+          <i class="bi bi-funnel" style="color:#6c757d"></i> 유형
+        </span>
+        <ul class="nav tab-pill mb-0" id="type-tabs">
+          <li class="nav-item"><a class="nav-link active" href="#" data-type="all">전체</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" data-type="System IP">System IP</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" data-type="Interface IP">Interface IP</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" data-type="Static Route">Static Route</a></li>
+        </ul>
+      </div>
+    </div>
 
     <div class="input-group input-group-sm ms-auto" style="max-width:240px">
       <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -345,6 +418,7 @@ const COLUMNS_DEF = [
   { key: 'subnet_mask',     label: '서브넷',       sortable: false, defaultVisible: false },
   { key: 'cidr',            label: 'CIDR',        sortable: true,  defaultVisible: true  },
   { key: 'ip_type',         label: '유형',         sortable: true,  defaultVisible: true  },
+  { key: 'category',        label: '구분',         sortable: true,  defaultVisible: true  },
   { key: 'device_name',     label: '장비명',       sortable: true,  defaultVisible: true  },
   { key: 'device_model',    label: '모델',         sortable: false, defaultVisible: true  },
   { key: 'location',        label: '위치',         sortable: false, defaultVisible: true  },
@@ -405,6 +479,7 @@ const DEFAULT_DIR   = '{{ default_dir }}';
 let allRecords      = [];
 let filteredRecords = [];
 let currentType     = 'all';
+let currentCategory = 'all';
 let searchQuery     = '';
 let sortCol         = 'device_name';
 let sortDir         = 'asc';
@@ -432,6 +507,11 @@ async function loadFromServer(dir) {
     allRecords = data.records;
     currentDir = data.config_dir;
     serverMode = true;
+    // Gitea 업데이트 뱃지
+    if (data.gitea_updated) {
+      document.getElementById('gitea-updated').textContent = data.gitea_updated;
+      document.getElementById('gitea-info').classList.remove('d-none');
+    }
     const dispEl = document.getElementById('dir-display');
     dispEl.innerHTML = `<i class="bi bi-server text-info me-1"></i><span class="text-info fw-semibold">${esc(dir)}</span>`;
     updateStats(data.summary);
@@ -442,6 +522,7 @@ async function loadFromServer(dir) {
     document.getElementById('btn-excel').disabled = false;
     document.getElementById('btn-csv').disabled   = false;
     document.getElementById('btn-load').disabled  = false;
+    updateCategoryTabs(allRecords);
     applyFilter();
     return true;
   } catch (e) {
@@ -478,6 +559,7 @@ async function uploadAndLoad(files) {
     );
     document.getElementById('btn-excel').disabled = false;
     document.getElementById('btn-csv').disabled   = false;
+    updateCategoryTabs(allRecords);
     applyFilter();
   } catch (e) {
     setDirStatus('⚠ 오류: ' + e.message, '#dc3545');
@@ -495,23 +577,44 @@ function setDirStatus(msg, color) {
 /* ════════════════════════════════════════════════════
    Stats
 ════════════════════════════════════════════════════ */
+function catBreakdown(catMap) {
+  if (!catMap) return '';
+  const entries = Object.entries(catMap).sort(([a], [b]) => a.localeCompare(b));
+  return entries.map(([k, v]) => `${esc(k)}: <b>${v}</b>`).join('<br>');
+}
+
 function updateStats(s) {
-  document.getElementById('stat-devices').textContent = s.total_devices ?? 0;
-  document.getElementById('stat-total').textContent   = s.total_ips    ?? 0;
-  document.getElementById('stat-system').textContent  = (s.by_type||{})['System IP']    ?? 0;
-  document.getElementById('stat-iface').textContent   = (s.by_type||{})['Interface IP'] ?? 0;
-  document.getElementById('stat-static').textContent  = (s.by_type||{})['Static Route'] ?? 0;
-  document.getElementById('stat-date').textContent    = s.latest_date || '—';
-  document.getElementById('record-count').textContent = (s.total_ips ?? 0) + ' records';
+  document.getElementById('stat-devices').textContent     = s.total_devices ?? 0;
+  document.getElementById('stat-devices-cat').innerHTML   = catBreakdown(s.devices_by_category);
+  document.getElementById('stat-total').textContent       = s.total_ips ?? 0;
+  document.getElementById('stat-total-cat').innerHTML     = catBreakdown(s.by_category);
+  document.getElementById('stat-system').textContent      = (s.by_type||{})['System IP']    ?? 0;
+  document.getElementById('stat-system-cat').innerHTML    = catBreakdown((s.by_type_category||{})['System IP']);
+  document.getElementById('stat-iface').textContent       = (s.by_type||{})['Interface IP'] ?? 0;
+  document.getElementById('stat-iface-cat').innerHTML     = catBreakdown((s.by_type_category||{})['Interface IP']);
+  document.getElementById('stat-static').textContent      = (s.by_type||{})['Static Route'] ?? 0;
+  document.getElementById('stat-static-cat').innerHTML    = catBreakdown((s.by_type_category||{})['Static Route']);
+  const [dateStr, timeStr] = (s.latest_date || '').split(' ');
+  document.getElementById('stat-date').textContent      = dateStr || '—';
+  document.getElementById('stat-date-time').textContent = timeStr || '';
+  document.getElementById('record-count').textContent   = (s.total_ips ?? 0) + ' records';
 }
 
 /* ════════════════════════════════════════════════════
    Filter + Sort
 ════════════════════════════════════════════════════ */
+function ipToNum(s) {
+  const ip = s ? s.split('/')[0] : '';
+  const parts = ip.split('.');
+  if (parts.length !== 4) return 0;
+  return parts.reduce((acc, p) => (acc * 256 + (parseInt(p, 10) || 0)), 0);
+}
+
 function applyFilter() {
   const q = searchQuery.toLowerCase();
   filteredRecords = allRecords.filter(r => {
     if (currentType !== 'all' && r.ip_type !== currentType) return false;
+    if (currentCategory !== 'all' && (r.category || '') !== currentCategory) return false;
     if (q) {
       const hay = [
         r.cidr, r.ip_address, r.device_name, r.device_model, r.location,
@@ -523,9 +626,20 @@ function applyFilter() {
     return true;
   });
   filteredRecords.sort((a, b) => {
-    const av = getCellValue(a, sortCol).toLowerCase();
-    const bv = getCellValue(b, sortCol).toLowerCase();
-    return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    let cmp;
+    if (sortCol === 'network_address' || sortCol === 'cidr') {
+      cmp = ipToNum(getCellValue(a, sortCol)) - ipToNum(getCellValue(b, sortCol));
+      if (cmp === 0 && sortCol === 'cidr') {
+        const ap = parseInt(getCellValue(a, sortCol).split('/')[1] || '0', 10);
+        const bp = parseInt(getCellValue(b, sortCol).split('/')[1] || '0', 10);
+        cmp = ap - bp;
+      }
+    } else {
+      const av = getCellValue(a, sortCol).toLowerCase();
+      const bv = getCellValue(b, sortCol).toLowerCase();
+      cmp = av.localeCompare(bv);
+    }
+    return sortDir === 'asc' ? cmp : -cmp;
   });
   renderTable();
 }
@@ -544,6 +658,8 @@ function getCellHtml(r, key) {
       return `<td class="mono fw-semibold">${esc(r.cidr)}</td>`;
     case 'ip_type':
       return `<td>${typeBadge(r.ip_type)}</td>`;
+    case 'category':
+      return `<td>${categoryBadge(r.category)}</td>`;
     case 'device_name':
       return `<td class="mono">${esc(r.device_name)}</td>`;
     case 'device_model':
@@ -767,6 +883,29 @@ document.querySelectorAll('#type-tabs .nav-link').forEach(a => {
 });
 
 /* ════════════════════════════════════════════════════
+   구분 탭 필터 (동적)
+════════════════════════════════════════════════════ */
+function updateCategoryTabs(records) {
+  const cats = [...new Set(records.map(r => r.category || '').filter(Boolean))].sort();
+  const el = document.getElementById('category-tabs');
+  el.innerHTML = `
+    <li class="nav-item"><a class="nav-link active" href="#" data-cat="all">전체</a></li>
+    ${cats.map(c => `<li class="nav-item"><a class="nav-link" href="#" data-cat="${esc(c)}">${esc(c)}</a></li>`).join('')}
+  `;
+  currentCategory = 'all';
+}
+
+document.getElementById('category-tabs').addEventListener('click', e => {
+  e.preventDefault();
+  const link = e.target.closest('.nav-link');
+  if (!link) return;
+  document.querySelectorAll('#category-tabs .nav-link').forEach(x => x.classList.remove('active'));
+  link.classList.add('active');
+  currentCategory = link.dataset.cat;
+  applyFilter();
+});
+
+/* ════════════════════════════════════════════════════
    검색
 ════════════════════════════════════════════════════ */
 document.getElementById('search-input').addEventListener('input', e => {
@@ -837,6 +976,11 @@ function typeBadge(t) {
   if (t === 'Interface IP') return `<span class="badge badge-iface">${t}</span>`;
   if (t === 'Static Route') return `<span class="badge badge-static">${t}</span>`;
   return `<span class="badge bg-secondary">${t}</span>`;
+}
+function categoryBadge(c) {
+  if (!c) return '<span class="badge badge-cat">—</span>';
+  const cls = c === 'CLOUD' ? 'badge-cloud' : c === 'ISP' ? 'badge-isp' : c === 'MPLS' ? 'badge-mpls' : 'badge-cat';
+  return `<span class="badge ${cls}">${esc(c)}</span>`;
 }
 function stateBadge(s) {
   return s === 'Active'

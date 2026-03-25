@@ -11,10 +11,13 @@ services:
     command: python app.py
     environment:
       - CONFIG_DIR=/data/configs
+      - GIT_META_DIR=/data/git-meta
       - TZ=Asia/Seoul
     volumes:
       # 호스트의 config 디렉토리를 컨테이너 /data/configs 에 마운트 (읽기 전용)
       - /data/configs:/data/configs:ro
+      # Gitea 최신 커밋 날짜 조회용 (.git 메타 디렉토리만 읽기 전용 마운트)
+      - /data/gitea-server/git-repo/.git:/data/git-meta:ro
     networks:
       - portainer-network
 

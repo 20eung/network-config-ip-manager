@@ -22,8 +22,37 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB — Nginx 프록�
 # 기본 config 디렉토리 (환경변수 CONFIG_DIR 우선, 없으면 실행 위치 기준)
 DEFAULT_CONFIG_DIR = os.environ.get('CONFIG_DIR', str(Path(__file__).parent.parent / 'config'))
 
+# Gitea git 메타 디렉토리 (환경변수 GIT_META_DIR, 없으면 빈 문자열)
+GIT_META_DIR = os.environ.get('GIT_META_DIR', '')
+
 # 메모리 캐시 (재파싱 방지)
 _cache: dict = {'dir': None, 'records': []}
+
+
+def get_gitea_last_update() -> str:
+    """git logs/HEAD 파일에서 최신 커밋 날짜 추출 (git 바이너리 불필요)
+    반환: 'YYYY-MM-DD HH:MM:SS' 형식 문자열, 실패 시 빈 문자열
+    """
+    if not GIT_META_DIR:
+        return ''
+    logs_head = Path(GIT_META_DIR) / 'logs' / 'HEAD'
+    try:
+        lines = logs_head.read_text(encoding='utf-8', errors='replace').splitlines()
+        if not lines:
+            return ''
+        # 마지막 줄: hash1 hash2 name... email unix_ts tz\taction
+        last = lines[-1].strip().split('\t')[0]
+        parts = last.split()
+        # 끝에서 두 번째가 unix timestamp, 마지막이 timezone (+0900)
+        ts      = int(parts[-2])
+        tz_str  = parts[-1]          # e.g. +0900
+        sign    = 1 if tz_str[0] == '+' else -1
+        tz_off  = sign * (int(tz_str[1:3]) * 3600 + int(tz_str[3:5]) * 60)
+        from datetime import datetime, timezone, timedelta
+        dt = datetime.fromtimestamp(ts, tz=timezone(timedelta(seconds=tz_off)))
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return ''
 
 
 def get_records(config_dir: str) -> list[dict]:
@@ -39,18 +68,31 @@ def get_records(config_dir: str) -> list[dict]:
 def build_summary(records: list[dict]) -> dict:
     """통계 요약 계산 (by_model은 장비 수 기준)"""
     total = len(records)
-    by_type = {}
-    by_model = {}
-    devices: dict[str, str] = {}  # device_name → model
+    by_type: dict[str, int] = {}
+    by_model: dict[str, int] = {}
+    by_category: dict[str, int] = {}
+    by_type_category: dict[str, dict[str, int]] = {}
+    devices: dict[str, str] = {}     # device_name → model
+    devices_cat: dict[str, str] = {} # device_name → category (첫 등장 기준)
     latest_date = ''
 
     for r in records:
         t = r['ip_type']
         by_type[t] = by_type.get(t, 0) + 1
 
+        cat = r.get('category', '')
+        if cat:
+            by_category[cat] = by_category.get(cat, 0) + 1
+            if t not in by_type_category:
+                by_type_category[t] = {}
+            by_type_category[t][cat] = by_type_category[t].get(cat, 0) + 1
+
         dn = r['device_name']
-        if dn and dn not in devices:
-            devices[dn] = r['device_model'] or 'Unknown'
+        if dn:
+            if dn not in devices:
+                devices[dn] = r['device_model'] or 'Unknown'
+            if dn not in devices_cat and cat:
+                devices_cat[dn] = cat
 
         d = r['config_date']
         if d and d > latest_date:
@@ -59,12 +101,19 @@ def build_summary(records: list[dict]) -> dict:
     for model in devices.values():
         by_model[model] = by_model.get(model, 0) + 1
 
+    devices_by_category: dict[str, int] = {}
+    for cat in devices_cat.values():
+        devices_by_category[cat] = devices_by_category.get(cat, 0) + 1
+
     return {
         'total_ips': total,
         'total_devices': len(devices),
         'by_type': by_type,
         'by_model': by_model,
         'latest_date': latest_date,
+        'by_category': by_category,
+        'by_type_category': by_type_category,
+        'devices_by_category': devices_by_category,
     }
 
 
@@ -76,6 +125,7 @@ COLUMN_MAP = {
     'subnet_mask':     ('서브넷 마스크', lambda r: r['subnet_mask'],                                          16),
     'cidr':            ('CIDR',         lambda r: r['cidr'],                                                  18),
     'ip_type':         ('IP 유형',      lambda r: r['ip_type'],                                               13),
+    'category':        ('구분',         lambda r: r.get('category', ''),                                      10),
     'device_name':     ('장비명',       lambda r: r['device_name'],                                           32),
     'device_model':    ('장비 모델',    lambda r: r['device_model'],                                          18),
     'location':        ('위치',         lambda r: r['location'],                                              20),
@@ -137,6 +187,7 @@ def api_load():
             'config_dir': config_dir,
             'summary': summary,
             'records': records,
+            'gitea_updated': get_gitea_last_update(),
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -222,7 +273,7 @@ def api_data():
 
     records = get_records(config_dir)
     summary = build_summary(records)
-    return jsonify({'summary': summary, 'records': records})
+    return jsonify({'summary': summary, 'records': records, 'gitea_updated': get_gitea_last_update()})
 
 
 @app.route('/api/export/excel')

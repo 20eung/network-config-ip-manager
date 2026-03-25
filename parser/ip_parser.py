@@ -6,6 +6,7 @@ parserV3.ts의 파싱 로직을 참고하여 Python으로 구현.
 import re
 import os
 from pathlib import Path
+from datetime import datetime, timedelta
 from ipaddress import IPv4Network, IPv4Address, AddressValueError
 from dataclasses import dataclass, field
 from typing import Optional
@@ -55,13 +56,16 @@ class IpRecord:
     as_number: str          # AS 번호
     filename: str           # 원본 파일명
 
+    # 분류 (서버 디렉토리 기준)
+    category: str = ''      # config 폴더 하위 서브폴더명 대문자 (CLOUD, ISP, MPLS 등)
+
 
 # ─────────────────────────────────────────────
 # 정규식 상수 (parserV3.ts 참고)
 # ─────────────────────────────────────────────
 
 RE_OS_VERSION     = re.compile(r'# TiMOS-(\S+)\s+\S+\s+(?:ALCATEL-LUCENT|ALCATEL|Nokia)\s+(.+?)(?:\s+Copyright|\s*$)', re.IGNORECASE)
-RE_GEN_DATE       = re.compile(r'# Generated\s+\w+\s+(\w+)\s+(\d+)\s+[\d:]+\s+(\d{4})\s+UTC', re.IGNORECASE)
+RE_GEN_DATE       = re.compile(r'# Generated\s+\w+\s+(\w+)\s+(\d+)\s+([\d:]+)\s+(\d{4})\s+UTC', re.IGNORECASE)
 RE_HOSTNAME       = re.compile(r'^\s{4,8}name\s+"([^"]+)"')
 RE_LOCATION       = re.compile(r'^\s+location\s+"([^"]+)"')
 RE_SYSTEM_IP      = re.compile(r'interface\s+"system"[\s\S]*?address\s+([\d.]+/\d+)', re.IGNORECASE)
@@ -169,7 +173,7 @@ def parse_model_from_os_comment(line: str) -> tuple[str, str]:
 
 
 def parse_gen_date(config_text: str) -> str:
-    """# Generated WED JAN 21 03:31:37 2026 UTC → '2026-01-21'"""
+    """# Generated WED JAN 21 03:31:37 2026 UTC → '2026-01-21 12:31:37' (KST)"""
     m = RE_GEN_DATE.search(config_text)
     if not m:
         return ''
@@ -178,10 +182,16 @@ def parse_gen_date(config_text: str) -> str:
         'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
         'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
     }
-    month = month_map.get(m.group(1).upper(), '00')
-    day = m.group(2).zfill(2)
-    year = m.group(3)
-    return f'{year}-{month}-{day}'
+    month    = month_map.get(m.group(1).upper(), '00')
+    day      = int(m.group(2))
+    time_str = m.group(3)   # HH:MM:SS (UTC)
+    year     = int(m.group(4))
+    try:
+        h, mi, s = map(int, time_str.split(':'))
+        dt_kst = datetime(year, int(month), day, h, mi, s) + timedelta(hours=9)
+        return dt_kst.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return f'{year}-{month}-{day:02d} {time_str}'
 
 
 # ─────────────────────────────────────────────
@@ -845,6 +855,14 @@ def parse_all_configs(config_dir: str) -> list[dict]:
     latest_paths = {v[1] for v in latest.values()}
     all_records: list[IpRecord] = []
     for filepath in sorted(latest_paths):
+        # config_dir 하위 첫 번째 서브폴더명을 구분(category)으로 사용
+        try:
+            rel = Path(filepath).relative_to(config_path)
+            category = rel.parts[0].upper() if len(rel.parts) > 1 else ''
+        except ValueError:
+            category = ''
+        for rec in file_records[filepath]:
+            rec.category = category
         all_records.extend(file_records[filepath])
 
     # ── Next-hop 역방향 맵 구축 ──
@@ -894,4 +912,5 @@ def _record_to_dict(r: IpRecord) -> dict:
         'router_id':        r.router_id,
         'as_number':        r.as_number,
         'filename':         r.filename,
+        'category':         r.category,
     }
