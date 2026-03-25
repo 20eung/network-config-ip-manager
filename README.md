@@ -2,7 +2,7 @@
 
 > Nokia SR OS 및 Arista EOS 장비의 config 파일을 파싱하여 IP 관리대장을 자동으로 생성하는 웹 대시보드
 
-[![Version](https://img.shields.io/badge/Version-v1.5.1--server-blue)](https://github.com/20eung/network-config-ip-manager/releases/tag/v1.5.1-server)
+[![Version](https://img.shields.io/badge/Version-v1.6.0--server-blue)](https://github.com/20eung/network-config-ip-manager/releases/tag/v1.6.0-server)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
@@ -57,8 +57,10 @@ portainer-network (Docker bridge)
 - 🔄 **서버 자동 로드** — 컨테이너 시작 시 `/data/configs` 디렉토리를 자동으로 파싱하여 즉시 표시
 - 📁 **로컬 폴더 업로드** — 서버에 없는 파일은 브라우저에서 직접 업로드 가능
 - 🔒 **Authentik 인증** — NetDevOps Portal을 통해 SSO 인증된 사용자만 접근
-- 🔍 **실시간 검색 & 필터** — IP 유형별 탭 + 키워드 검색
-- 📊 **통계 대시보드** — 장비 수, IP 수, 유형별 집계, 최신 Config 날짜
+- 🌐 **망구분 필드** — 서브폴더명을 구분 필드로 자동 표시 (CLOUD / ISP / MPLS), 색상 배지 적용
+- 🔍 **실시간 검색 & 필터** — 망구분 + IP 유형 독립 필터 탭 + 키워드 검색
+- 📊 **통계 대시보드** — 장비 수·IP 수·유형별 집계 카드에 망구분별 세부 카운터 표시
+- 🕐 **Gitea 커밋 날짜** — 디렉토리 바에 최신 git 커밋 시각 표시 (KST 기준)
 - ⚙️ **컬럼 커스터마이즈** — 표시 여부 토글 + 드래그로 순서 변경 + 마우스로 너비 조절 (localStorage 영구 저장)
 - 📤 **내보내기** — Excel (4개 시트: 전체/Interface IP/Static Route/장비 목록) & CSV
 - 🔒 **폐쇄망 환경 완전 지원** — CDN 의존성 없이 정적 파일 내장
@@ -103,8 +105,10 @@ services:
     environment:
       - TZ=Asia/Seoul
       - CONFIG_DIR=/data/configs
+      - GIT_META_DIR=/data/git-meta
     volumes:
       - /data/configs:/data/configs:ro
+      - /data/gitea-server/git-repo/.git:/data/git-meta:ro
     networks:
       - portainer-network
 
@@ -117,6 +121,8 @@ networks:
 - 호스트 경로: `/data/configs` (실제 config 파일 위치)
 - 컨테이너 경로: `/data/configs` (Flask 앱이 읽는 경로)
 - `:ro` 플래그: 읽기 전용 마운트 (안전성)
+
+`GIT_META_DIR`은 선택 사항입니다. 설정하지 않으면 Gitea 커밋 날짜가 표시되지 않습니다.
 
 ### 3. 빌드 및 실행
 
@@ -152,7 +158,7 @@ NetDevOps Portal에서 **IP Manager** 카드를 클릭하거나 직접 접근합
 
 ### 공통 기능
 
-4. 상단 탭(전체 / System IP / Interface IP / Static Route)으로 필터링
+4. **망구분 필터** (전체 / CLOUD / ISP / MPLS) 및 **유형 필터** (전체 / System IP / Interface IP / Static Route)로 독립 필터링
 5. 검색창에서 키워드 검색 (IP, 장비명, Peer 장비명 등)
 6. `⚙` 아이콘으로 컬럼 표시 여부 및 순서 조정
 7. 컬럼 헤더 우측 끝을 드래그하여 너비 조절
@@ -245,6 +251,7 @@ network-config-ip-manager/
 |------|--------|------|
 | `SECRET_KEY` | 랜덤 생성 | Flask 세션 시크릿 키 |
 | `CONFIG_DIR` | `/data/configs` | 서버 사이드 config 기본 경로 (컨테이너 내부 경로) |
+| `GIT_META_DIR` | `` (빈 문자열) | Gitea 커밋 날짜 조회용 `.git` 디렉토리 경로 (선택 사항) |
 | `TZ` | `Asia/Seoul` | 타임존 |
 
 **주의**: `CONFIG_DIR`은 컨테이너 내부 경로이며, `docker-compose.yml`의 볼륨 마운트 경로와 일치해야 합니다.
@@ -269,6 +276,11 @@ network-config-ip-manager/
 - [x] 서버 디렉토리 자동 로드 (server 브랜치)
 - [x] 서브디렉토리 재귀 파싱 지원
 - [x] NetDevOps Portal 통합 + Authentik Forward Auth
+- [x] 망구분 필드 + 독립 필터 (v1.6.0)
+- [x] 카드 망구분 카운터 (v1.6.0)
+- [x] IP 주소 기준 정렬 (v1.6.0)
+- [x] Config 시간 표시 UTC→KST 변환 (v1.6.0)
+- [x] Gitea 커밋 날짜 표시 (v1.6.0)
 - [ ] VPRN / VPLS 인터페이스 파싱 지원
 - [ ] IP 중복 검사 기능
 - [ ] 변경 이력 비교 (이전 파싱 결과와 diff)
