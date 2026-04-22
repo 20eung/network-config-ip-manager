@@ -5,6 +5,7 @@ Nokia ip_parser.py의 IpRecord 클래스를 재사용.
 참조: docs/arista-eos-config-syntax.md
 """
 import re
+from datetime import datetime
 from pathlib import Path
 from ipaddress import IPv4Network, IPv4Address, AddressValueError
 
@@ -49,6 +50,15 @@ RE_BGP_ROUTER_ID = re.compile(r'^\s+router-id\s+([\d.]+)')
 
 # 파일명에서 날짜 추출 (예: _20260304.txt)
 RE_FILENAME_DATE = re.compile(r'_(\d{4})(\d{2})(\d{2})\.txt$', re.IGNORECASE)
+
+# 호스트명 → 위치 매핑 (키워드 순서: 긴 이름 먼저)
+_HOSTNAME_LOCATION_MAP = [
+    ('GASAN3F',  'GASAN_3F'),
+    ('PDC3F',    'Pangyo_ITC_3F'),
+    ('DDC3F',    'DDC_3F'),
+    ('DDC2F',    'DDC_2F'),
+    ('PG3F',     'Pangyo_ITC_3F'),
+]
 
 # L3 타입 분류
 _L3_ALWAYS  = ('loopback', 'vlan')   # 항상 L3 (no switchport 없어도)
@@ -155,6 +165,10 @@ def extract_device_info(config_text: str, filename: str) -> dict:
             m = RE_HOSTNAME.match(stripped)
             if m:
                 info['hostname'] = m.group(1)
+                for keyword, loc in _HOSTNAME_LOCATION_MAP:
+                    if keyword.upper() in info['hostname'].upper():
+                        info['location'] = loc
+                        break
 
         # BGP AS / router-id 추출
         if not in_bgp:
@@ -355,6 +369,9 @@ def parse_config_file(filepath: str) -> list[IpRecord]:
         return []
 
     device   = extract_device_info(config_text, filename)
+    if not device['config_date']:
+        mtime = path.stat().st_mtime
+        device['config_date'] = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
     ifaces   = parse_interfaces(config_text)
     routes   = parse_static_routes(config_text)
     records: list[IpRecord] = []
